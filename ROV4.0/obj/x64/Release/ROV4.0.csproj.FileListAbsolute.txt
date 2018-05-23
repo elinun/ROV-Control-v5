@@ -1,0 +1,10 @@
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\bin\x64\Release\ROV4.0.exe
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\bin\x64\Release\SlimDX.dll
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\bin\x64\Release\SlimDX.pdb
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\bin\x64\Release\SlimDX.xml
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\obj\x64\Release\ROV4.Form1.resources
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\obj\x64\Release\ROV4._0.Properties.Resources.resources
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\obj\x64\Release\ROV4.0.csproj.GenerateResource.Cache
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\obj\x64\Release\ROV4.0.csproj.CoreCompileInputs.cache
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\obj\x64\Release\ROV4.0.exe
+C:\Users\elijn\source\repos\WindowsFormsApp1\ROV4.0\obj\x64\Release\ROV4.0.csprojResolveAssemblyReference.cache
