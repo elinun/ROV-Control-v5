@@ -8,6 +8,7 @@ using SlimDX.DirectInput;
 using System.Net.Sockets;
 using System.Linq;
 using System.Drawing;
+using System.IO.Ports;
 
 /*
  * TODO:
@@ -50,7 +51,7 @@ namespace ROV4
                     {
                         Invoke(new MethodInvoker(delegate
                         {
-                            debug.Text = "Controller Disconnected";
+                            debug.Text += "Controller Disconnected";
                         }));
                         stick = null;
                         sticks = GetSticks();
@@ -62,7 +63,7 @@ namespace ROV4
                     {
                         Invoke(new MethodInvoker(delegate
                         {
-                            debug.Text = "Controller Disconnected";
+                            debug.Text += "Controller Disconnected";
                         }));
                         sticks = GetSticks();
                     }
@@ -135,8 +136,8 @@ namespace ROV4
         double highRangeSF = 0.002;//Stretch Factor for 1000 unit range.
         bool fr = false;
         bool lr = false; //keep track of forwards/back axis and left/right axis
-        //this makes it so you have to return stick to center to change from forward/back to left/right
-
+                         //this makes it so you have to return stick to center to change from forward/back to left/right
+        int selectedCam = 1;
         void stickHandle(Joystick stick)
         {
             JoystickState state = new JoystickState();
@@ -156,6 +157,20 @@ namespace ROV4
             {
                 //debug.Text = "X: "+xPwr;                   
             }));
+            //handle cam switchbox
+
+            if (serPort.IsOpen)
+            {
+                int pov = state.GetPointOfViewControllers()[0];
+                if(pov == 9000)
+                {
+                    serPort.Write("2");
+                }
+                if(pov == 27000)
+                {
+                    serPort.Write("1");
+                }
+            }
 
             if (tcpclnt != null)
             {
@@ -187,7 +202,7 @@ namespace ROV4
                     }
                     str +=
                        // (buttons[3] && ((camMs+=4) < 1315)? divider + "w" + camMs: "") + (buttons[1]  && ((camMs-=4)>875)? divider + "w"+camMs : "") +
-                        (buttons[12] ? divider + "s0000" : "") +
+                        (buttons[8] ? divider + "s0000" : "") +
                          (//buttons[3] && ((camDeg)<89)? divider+"W" +camDeg++:"")+ (buttons[1] && ((camDeg)>15)? divider + "W" + camDeg--:"")+
                         //(buttons[2] && ((clawDeg)<89)? divider + "Q"+clawDeg++:"")+(buttons[0] && ((clawDeg)>15) ? divider+"Q + clawDeg--: "")+
                         //(buttons[2] && (clawMs+=4)<1315 ? divider + "q" + clawMs : "") + (buttons[0] && (clawMs-=4)>875? divider + "q" + clawMs: "") +//servo, adding this many degrees to position
@@ -331,6 +346,8 @@ namespace ROV4
             return retVal;
         }
 
+        SerialPort serPort;
+
         public Form1()
         {
             InitializeComponent();
@@ -343,10 +360,33 @@ namespace ROV4
             ConnectBtn.Click += ConnectBtn_Click;
             // this.MouseMove += mouseMove;
 
-            
+            //Setup Onshore Arduino with Camera Switch
+            serPort = new SerialPort();
+            serPort.BaudRate = 9600;
+            serPort.Parity = Parity.None;
+            serPort.DataBits = 8;
+            serPort.StopBits = StopBits.One;
+            serPort.ReadTimeout = 50;
+            serPort.WriteTimeout = 50;
+            debug.Text = "SwitchBox not found.";
+            foreach (string name in SerialPort.GetPortNames())
+            {
+                serPort.PortName = name;
+                try
+                {
+                    serPort.Open();
+                    serPort.Write("1");
+                    if (serPort.ReadLine().Contains("SAAHDUDE"))
+                    {
+                        debug.Text = name;
+                        break;
+                    }
+                }
+                catch (IOException e) { serPort.Close(); }
+                catch (TimeoutException e) { serPort.Close(); }
+                
+            }
         }
-
-
 
         public void monClosing(object ev, FormClosingEventArgs e)// a better cleanup
         {
@@ -508,12 +548,15 @@ namespace ROV4
                     trims = sr.ReadLine();
                 string[] sValues = trims.Split(',');
                 ScrollBar bar;
-                for (int i = 1; i < 7; i++)
+                for (int i = 1; i < 4; i++)
                 {
                     bar = this.Controls.Find("vScrollBar" + i, true).FirstOrDefault() as ScrollBar;
                     bar.Value = int.Parse(sValues[i - 1]);
                     vScrollBar_Scroll((object)bar, new ScrollEventArgs(ScrollEventType.SmallIncrement, bar.Value));
                 }
+                bar = this.Controls.Find("vScrollBar6", true).FirstOrDefault() as ScrollBar;
+                bar.Value = int.Parse(sValues[sValues.Length-1]);
+                vScrollBar_Scroll((object)bar, new ScrollEventArgs(ScrollEventType.SmallIncrement, bar.Value));
             }
         }
 
@@ -573,25 +616,29 @@ namespace ROV4
         double windDistance;
         private void calculate_btn_Click(object sender, EventArgs e)
         {
-            dir = Int16.Parse(heading.Text);
-            double ascent_rateD = Double.Parse(ascent_rate.Text);
-            int failureSeconds = Int16.Parse(failure_time.Text);
-            double ascent_speedD = Double.Parse(ascent_speed.Text);
-            double descent_speedD = Double.Parse(descent_speed.Text);
-            double descent_rateD = Double.Parse(descent_rate.Text);
-            double wind_speedD = Double.Parse(wind_speed.Text);
-            double wind_directionR = Double.Parse(wind_direction.Text);
+            try
+            {
+                dir = Int16.Parse(heading.Text);
+                double ascent_rateD = Double.Parse(ascent_rate.Text);
+                int failureSeconds = Int16.Parse(failure_time.Text);
+                double ascent_speedD = Double.Parse(ascent_speed.Text);
+                double descent_speedD = Double.Parse(descent_speed.Text);
+                double descent_rateD = Double.Parse(descent_rate.Text);
+                double wind_speedD = Double.Parse(wind_speed.Text);
+                double wind_directionR = Double.Parse(wind_direction.Text);
 
-            double height = ascent_rateD * failureSeconds;
-            planeDistance0 = round(ascent_speedD * failureSeconds, 2);//before failure vecotr
-            planeDistance1 = round( descent_speedD * (height / descent_rateD), 2);//after failure vector
-             windDistance = round(wind_speedD * (height / descent_rateD), 2);
-             windDirectionI = (int)(wind_directionR < 180 ? wind_directionR + 180 : wind_directionR - 180);
-            av.Text = "Ascent Vector: \n" + planeDistance0 + " meters\n" + dir + " degrees";
-            dv.Text = "Descent Vector: \n" + planeDistance1 + " meters\n" + dir + " degrees";
-            wv.Text = "Wind Vector: \n" + windDistance + " meters\n" + windDirectionI + " degrees";
-            //calculationPhase = -1;
-            instructions.Text = "Click the starting point.";
+                double height = ascent_rateD * failureSeconds;
+                planeDistance0 = round(ascent_speedD * failureSeconds, 2);//before failure vecotr
+                planeDistance1 = round(descent_speedD * (height / descent_rateD), 2);//after failure vector
+                windDistance = round(wind_speedD * (height / descent_rateD), 2);
+                windDirectionI = (int)(wind_directionR < 180 ? wind_directionR + 180 : wind_directionR - 180);
+                av.Text = "Ascent Vector: \n" + planeDistance0 + " meters\n" + dir + " degrees";
+                dv.Text = "Descent Vector: \n" + planeDistance1 + " meters\n" + dir + " degrees";
+                wv.Text = "Wind Vector: \n" + windDistance + " meters\n" + windDirectionI + " degrees";
+                //calculationPhase = -1;
+                instructions.Text = "Click the starting point.";
+            }
+            catch (Exception x) { instructions.Text = "Enter valid numbers, Dingus!"; }
         }
 
         double round(double x, int significantFigs)
